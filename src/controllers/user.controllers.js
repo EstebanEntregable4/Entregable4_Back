@@ -83,7 +83,25 @@ const verifyCode = catchError(async (req, res) => {
 
   return res.json(userUpdate[1][0]);
 });
-const login = catchError(async (req, res) => {});
+const login = catchError(async (req, res) => {
+  const { email, password } = req.body;
+  const user = await User.findOne({ where: { email } });
+  if (!user) return res.sendStatus(401);
+  const isValidPassword = await bcrypt.compare(password, user.password);
+
+  if (!isValidPassword) return res.sendStatus(401);
+  if (!user.isVerified) return res.sendStatus(401);
+  const token = jwt.sign({ user }, process.env.TOKEN_SECRET, {
+    expiresIn: "1d",
+  });
+
+  return res.json({ user, token });
+});
+
+const getMe = catchError(async (req, res) => {
+  const loggedUser = req.user;
+  return res.json(loggedUser);
+});
 
 const verifyResetPassword = catchError(async (req, res) => {
   const { email, frontBaseUrl } = req.body;
@@ -131,6 +149,7 @@ module.exports = {
   getAll,
   create,
   getOne,
+  getMe,
   remove,
   update,
   verifyCode,
